@@ -1,4 +1,4 @@
 allowBuilds:
   sharp: false
-  supabase: set this to true or false
+  supabase: false
   unrs-resolver: false
