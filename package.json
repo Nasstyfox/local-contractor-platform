@@ -10,7 +10,11 @@
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
+<<<<<<< HEAD
     "@supabase/supabase-js": "^2.119.2",
+=======
+    "@supabase/supabase-js": "^2.119.0",
+>>>>>>> 2d98c23ef5b2478aa7318e64a52e63da1b2c2f4e
     "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",
