@@ -2,10 +2,15 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import PaystackButton from './contractor/billing/PaystackButton'
 import Link from 'next/link'
-import { updateClientProfile } from './actions'
+import SuburbSearch from '@/components/SuburbSearch'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string; suburb?: string }>
+}) {
   const supabase = await createClient()
+  const params = await searchParams
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   
   if (authError || !user) redirect('/login')
@@ -15,6 +20,11 @@ export default async function DashboardPage() {
   let contractor = null
   let leads: any[] = []
   let clientRequests: any[] = []
+  
+  // Client specific data for the embedded search
+  let categories: any[] = []
+  let suburbs: any[] = []
+  let searchResults: any[] = []
 
   // --- CONTRACTOR DATA ---
   if (profile?.role === 'contractor') {
@@ -40,30 +50,55 @@ export default async function DashboardPage() {
 
   // --- CLIENT DATA ---
   if (profile?.role === 'client') {
+    // Fetch categories & suburbs for search
+    const { data: cats } = await supabase.from('categories').select('*').order('name')
+    const { data: subs } = await supabase.from('suburbs').select('*').order('name')
+    categories = cats || []
+    suburbs = subs || []
+
+    // Fetch client's recent requests (just the count for the card)
     const { data: requestsData } = await supabase
       .from('service_requests')
+      .select('id')
+      .eq('client_id', user.id)
+    clientRequests = requestsData || []
+
+    // Build embedded search query
+    let query = supabase
+      .from('contractors')
       .select(`
         id,
-        description,
-        created_at,
-        categories (name),
-        suburbs (name),
-        leads (
-          contractors (business_name)
-        )
+        business_name,
+        bio,
+        status,
+        is_featured,
+        contractor_categories!inner(category_id),
+        contractor_suburbs!inner(suburb_id)
       `)
-      .eq('client_id', user.id)
-      .order('created_at', { ascending: false })
-      
-    if (requestsData) clientRequests = requestsData
+      .in('status', ['trial', 'active'])
+      .order('is_featured', { ascending: false })
+      .order('status', { ascending: true })
+
+    if (params.category) {
+      query = query.eq('contractor_categories.category_id', params.category)
+    }
+    if (params.suburb) {
+      query = query.eq('contractor_suburbs.suburb_id', params.suburb)
+    }
+
+    const { data: results } = await query
+    searchResults = results || []
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 md:p-8 min-h-screen">
+    <div className="max-w-6xl mx-auto p-6 md:p-8 min-h-screen">
       
       {/* Consistent Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 pb-4 border-b border-gray-200 gap-4">
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
+          <p className="text-gray-500">Welcome back, {profile?.full_name || user.email}</p>
+        </div>
         
         <div className="flex items-center gap-3">
           {profile?.role === 'admin' && (
@@ -79,21 +114,9 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* --- ADMIN & CONTRACTOR PROFILE CARD --- */}
-      {profile?.role !== 'client' && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Your Profile</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-            <div><span className="text-gray-500 block mb-1">Name</span> <span className="font-medium text-gray-900">{profile?.full_name || 'Not set'}</span></div>
-            <div><span className="text-gray-500 block mb-1">Role</span> <span className="font-medium text-gray-900 capitalize">{profile?.role}</span></div>
-            <div><span className="text-gray-500 block mb-1">Email</span> <span className="font-medium text-gray-900">{user.email}</span></div>
-          </div>
-        </div>
-      )}
-
       {/* --- CONTRACTOR VIEW --- */}
       {profile?.role === 'contractor' && contractor && (
-        <>
+        <div className="max-w-4xl">
           <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -119,17 +142,10 @@ export default async function DashboardPage() {
             
             <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
-                <p className="text-sm text-gray-600 font-medium mb-2">
-                  {contractor.status === 'trial' && "You are on a 30-day free trial."}
-                  {contractor.status === 'expired' && "Your trial has expired. Please subscribe to stay visible."}
-                  {contractor.status === 'active' && "Your subscription is active. Thank you!"}
-                  {contractor.status === 'pending_verification' && "Upload documents to get verified."}
-                </p>
                 <Link href="/dashboard/contractor/documents" className="text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline">
                   Manage Verification Documents
                 </Link>
               </div>
-
               <div className="flex gap-3">
                 {(contractor.status === 'trial' || contractor.status === 'expired') && (
                   <PaystackButton email={user.email!} contractorId={contractor.id} plan="standard" />
@@ -141,6 +157,7 @@ export default async function DashboardPage() {
             </div>
           </div>
 
+          {/* Leads */}
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h2 className="text-lg font-bold text-gray-800 mb-4">Your Job Leads</h2>
             {leads.length === 0 ? (
@@ -170,69 +187,81 @@ export default async function DashboardPage() {
               </ul>
             )}
           </div>
-        </>
+        </div>
       )}
 
       {/* --- CLIENT VIEW --- */}
       {profile?.role === 'client' && (
         <>
-          {/* Client Details Form */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-gray-800">My Details</h2>
-              <Link href="/" className="text-sm font-bold bg-blue-50 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors">
-                + Find a New Pro
-              </Link>
-            </div>
-            <p className="text-sm text-gray-500 mb-4">Contractors will use these details to contact you about your jobs.</p>
-            
-            <form action={updateClientProfile} className="flex flex-col sm:flex-row gap-4 items-end bg-gray-50 p-4 rounded-lg border border-gray-100">
-              <div className="flex-1 w-full">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                <input name="full_name" defaultValue={profile.full_name || ''} required className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-              </div>
-              <div className="flex-1 w-full">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                <input name="phone" defaultValue={profile.phone || ''} required className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-              </div>
-              <button type="submit" className="bg-gray-900 text-white px-6 py-2.5 rounded-md font-bold hover:bg-gray-800 transition-colors w-full sm:w-auto">
-                Save Details
-              </button>
-            </form>
+          {/* 3 Big Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <Link href="/dashboard/client/profile" className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm hover:shadow-md hover:border-blue-300 transition-all group flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">👤</div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">My Details</h2>
+              <p className="text-sm text-gray-500">Manage your contact info and address</p>
+            </Link>
+
+            <Link href="/dashboard/client/request" className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm hover:shadow-md hover:border-green-300 transition-all group flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">📝</div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">New Request</h2>
+              <p className="text-sm text-gray-500">Submit a new job for contractors to quote</p>
+            </Link>
+
+            <Link href="/dashboard/client/history" className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm hover:shadow-md hover:border-purple-300 transition-all group flex flex-col items-center text-center relative">
+              <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">🧾</div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">My History</h2>
+              <p className="text-sm text-gray-500">View your past requests and receipts</p>
+              {clientRequests.length > 0 && (
+                <span className="absolute top-4 right-4 bg-purple-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                  {clientRequests.length}
+                </span>
+              )}
+            </Link>
           </div>
 
-          {/* Client Job History */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">My Service Requests</h2>
-            {clientRequests.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">You haven't requested any jobs yet.</p>
-                <Link href="/" className="inline-block bg-blue-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors">
-                  Browse Contractors
-                </Link>
-              </div>
-            ) : (
-              <ul className="divide-y divide-gray-100">
-                {clientRequests.map((req) => (
-                  <li key={req.id} className="py-5">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <span className="font-bold text-gray-900 text-lg">
-                          {req.categories?.name || 'Service'} in {req.suburbs?.name || 'Area'}
-                        </span>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Sent to: <span className="font-medium text-gray-700">{req.leads?.[0]?.contractors?.business_name || 'Contractor'}</span>
-                        </p>
-                      </div>
-                      <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-md">
-                        {new Date(req.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </span>
-                    </div>
-                    <p className="text-gray-700 text-sm bg-gray-50 p-4 rounded-lg border border-gray-100 italic mt-3">"{req.description}"</p>
-                  </li>
+          {/* Embedded Search */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-extrabold text-gray-900 mb-4 tracking-tight">Find a Pro</h2>
+            <form className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-6">
+              <select name="category" defaultValue={params.category || ''} className="flex-1 border border-gray-300 p-3 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">All Services</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
-              </ul>
-            )}
+              </select>
+
+              <SuburbSearch suburbs={suburbs} defaultValue={params.suburb} />
+
+              <button type="submit" className="bg-blue-900 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-800 transition-colors shadow-sm">
+                Search
+              </button>
+            </form>
+
+            {/* Search Results */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {searchResults.length === 0 ? (
+                <div className="col-span-full text-center py-12 bg-white rounded-xl border border-gray-200">
+                  <p className="text-gray-500">No contractors found matching your search.</p>
+                </div>
+              ) : (
+                searchResults.map((c) => (
+                  <Link href={`/contractors/${c.id}`} key={c.id} className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-lg transition-all p-6 flex flex-col justify-between group">
+                    <div>
+                      {c.is_featured && (
+                        <span className="inline-block bg-purple-100 text-purple-800 text-xs font-bold px-2.5 py-1 rounded-md mb-3">
+                          ⭐ FEATURED PRO
+                        </span>
+                      )}
+                      <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">{c.business_name}</h3>
+                      <p className="text-gray-600 text-sm line-clamp-3 mb-4">{c.bio}</p>
+                    </div>
+                    <span className="text-blue-600 font-medium text-sm mt-2 flex items-center gap-1">
+                      View Profile <span className="group-hover:translate-x-1 transition-transform">→</span>
+                    </span>
+                  </Link>
+                ))
+              )}
+            </div>
           </div>
         </>
       )}
