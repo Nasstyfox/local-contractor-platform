@@ -1,73 +1,81 @@
-'use server'
-
 import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
+import Link from 'next/link'
+import SuburbSearch from '@/components/SuburbSearch'
+import { broadcastRequest } from './actions'
 
-export async function broadcastRequest(formData: FormData) {
+export default async function NewRequestPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
   if (!user) redirect('/login')
 
-  const category_id = formData.get('category') as string
-  const suburb_id = formData.get('suburb') as string
-  const description = formData.get('description') as string
-  const urgency = formData.get('urgency') as string
+  const { data: categories } = await supabase.from('categories').select('*').order('name')
+  const { data: suburbs } = await supabase.from('suburbs').select('*').order('name')
 
-  if (!category_id || !suburb_id) {
-    throw new Error('Category and Suburb are required.')
-  }
+  return (
+    <div className="max-w-3xl mx-auto p-6 md:p-8 min-h-screen">
+      <div className="mb-8">
+        <Link href="/dashboard" className="text-blue-600 hover:underline mb-4 inline-block font-medium">
+          ← Back to Dashboard
+        </Link>
+        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Submit a New Request</h1>
+        <p className="text-gray-500 mt-1">Broadcast your job to all matching contractors in your area.</p>
+      </div>
 
-  // 1. Get the client's profile to grab their name/phone for the lead
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+      <div className="bg-white border border-gray-200 rounded-xl p-6 md:p-8 shadow-sm">
+        <form action={broadcastRequest} className="flex flex-col gap-6">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">What service do you need?</label>
+              <select name="category" required className="w-full border border-gray-300 p-3 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Select a Trade...</option>
+                {categories?.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
 
-  // 2. Create the Service Request
-  const adminClient = createAdminClient()
-  const { data: request, error: requestError } = await adminClient
-    .from('service_requests')
-    .insert({
-      client_id: user.id,
-      guest_name: profile?.full_name,
-      guest_email: user.email,
-      guest_phone: profile?.phone,
-      category_id,
-      suburb_id,
-      description,
-      urgency
-    })
-    .select()
-    .single()
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Where do you need it?</label>
+              <SuburbSearch suburbs={suburbs || []} />
+            </div>
+          </div>
 
-  if (requestError) {
-    console.error(requestError)
-    throw new Error('Failed to create request.')
-  }
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">How urgent is this?</label>
+            <select name="urgency" required className="w-full border border-gray-300 p-3 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="Flexible">Flexible (Whenever is convenient)</option>
+              <option value="This Week">This Week</option>
+              <option value="Emergency">Emergency (Today)</option>
+            </select>
+          </div>
 
-  // 3. Find ALL matching contractors (Active or Trial)
-  const { data: matchedContractors } = await adminClient
-    .from('contractors')
-    .select(`
-      id,
-      contractor_categories!inner(category_id),
-      contractor_suburbs!inner(suburb_id)
-    `)
-    .in('status', ['trial', 'active'])
-    .eq('contractor_categories.category_id', category_id)
-    .eq('contractor_suburbs.suburb_id', suburb_id)
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Job Description</label>
+            <textarea 
+              name="description" 
+              required 
+              rows={5}
+              placeholder="e.g., My geyser is leaking and I need it fixed today. It's in the ceiling..."
+              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+            />
+          </div>
 
-  // 4. Dispatch the lead to all matched contractors
-  if (matchedContractors && matchedContractors.length > 0) {
-    const leadsToInsert = matchedContractors.map((c) => ({
-      request_id: request.id,
-      contractor_id: c.id,
-      status: 'new'
-    }))
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex gap-3 text-sm text-blue-800">
+            <span className="text-xl">💡</span>
+            <p>By submitting this request, it will immediately be sent to all verified contractors matching your trade and area. They will contact you directly via phone or WhatsApp.</p>
+          </div>
 
-    await adminClient.from('leads').insert(leadsToInsert)
-  }
-
-  revalidatePath('/dashboard')
-  revalidatePath('/dashboard/client/history')
-  redirect('/dashboard/client/history')
+          <button 
+            type="submit" 
+            className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors mt-2"
+          >
+            Broadcast Request to Contractors
+          </button>
+        </form>
+      </div>
+    </div>
+  )
 }

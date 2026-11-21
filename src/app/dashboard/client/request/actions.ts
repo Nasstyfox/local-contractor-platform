@@ -16,7 +16,7 @@ export async function broadcastRequest(formData: FormData) {
   const urgency = formData.get('urgency') as string
 
   if (!category_id || !suburb_id) {
-    return { error: 'Please select a category and a suburb.' }
+    throw new Error('Category and Suburb are required.')
   }
 
   // 1. Get the client's profile to grab their name/phone for the lead
@@ -41,7 +41,7 @@ export async function broadcastRequest(formData: FormData) {
 
   if (requestError) {
     console.error(requestError)
-    return { error: 'Failed to create request.' }
+    throw new Error('Failed to create request.')
   }
 
   // 3. Find ALL matching contractors (Active or Trial)
