@@ -125,35 +125,21 @@ export default async function DashboardPage({
       {/* --- ADMIN VIEW --- */}
       {profile?.role === 'admin' && (
          <div>
-            {/* Search Bar */}
             <form className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-6 flex flex-col md:flex-row gap-4">
               <div className="flex-1">
-                <input 
-                  type="text" 
-                  name="q" 
-                  defaultValue={params.q || ''} 
-                  placeholder="Search by Name or Phone Number..." 
-                  className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <input type="text" name="q" defaultValue={params.q || ''} placeholder="Search by Name or Phone Number..." className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="w-full md:w-64">
-                <select 
-                  name="role" 
-                  defaultValue={params.role || 'all'} 
-                  className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                >
+                <select name="role" defaultValue={params.role || 'all'} className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                   <option value="all">All Roles</option>
                   <option value="client">Clients Only</option>
                   <option value="contractor">Contractors Only</option>
                   <option value="admin">Admins Only</option>
                 </select>
               </div>
-              <button type="submit" className="bg-gray-900 text-white px-8 py-3 rounded-lg font-bold hover:bg-gray-800 transition-colors">
-                Search
-              </button>
+              <button type="submit" className="bg-gray-900 text-white px-8 py-3 rounded-lg font-bold hover:bg-gray-800 transition-colors">Search</button>
             </form>
 
-            {/* User List */}
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-gray-600">
@@ -169,9 +155,7 @@ export default async function DashboardPage({
                   <tbody className="divide-y divide-gray-200">
                     {adminUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                          No users found matching your search.
-                        </td>
+                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">No users found matching your search.</td>
                       </tr>
                     ) : (
                       adminUsers.map((u) => (
@@ -183,23 +167,14 @@ export default async function DashboardPage({
                             )}
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`capitalize text-xs font-bold px-2.5 py-1 rounded-md ${
-                              u.role === 'admin' ? 'bg-gray-800 text-white' :
-                              u.role === 'contractor' ? 'bg-blue-100 text-blue-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
+                            <span className={`capitalize text-xs font-bold px-2.5 py-1 rounded-md ${u.role === 'admin' ? 'bg-gray-800 text-white' : u.role === 'contractor' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
                               {u.role}
                             </span>
                           </td>
                           <td className="px-6 py-4">{u.phone || 'N/A'}</td>
                           <td className="px-6 py-4">
                             {u.role === 'contractor' ? (
-                              <span className={`uppercase text-xs font-bold px-2 py-1 rounded-md ${
-                                u.contractors?.[0]?.status === 'pending_verification' ? 'bg-yellow-100 text-yellow-800' :
-                                u.contractors?.[0]?.status === 'trial' ? 'bg-green-100 text-green-800' :
-                                u.contractors?.[0]?.status === 'active' ? 'bg-blue-100 text-blue-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
+                              <span className={`uppercase text-xs font-bold px-2 py-1 rounded-md ${u.contractors?.[0]?.status === 'pending_verification' ? 'bg-yellow-100 text-yellow-800' : u.contractors?.[0]?.status === 'trial' ? 'bg-green-100 text-green-800' : u.contractors?.[0]?.status === 'active' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>
                                 {u.contractors?.[0]?.status?.replace('_', ' ') || 'No Profile'}
                               </span>
                             ) : (
@@ -207,9 +182,7 @@ export default async function DashboardPage({
                             )}
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <Link href={`/admin/users/${u.id}`} className="text-blue-600 font-bold hover:underline">
-                              View Profile →
-                            </Link>
+                            <Link href={`/admin/users/${u.id}`} className="text-blue-600 font-bold hover:underline">View Profile →</Link>
                           </td>
                         </tr>
                       ))
@@ -222,110 +195,128 @@ export default async function DashboardPage({
       )}
 
       {/* --- CONTRACTOR VIEW --- */}
-      {profile?.role === 'contractor' && contractor && (
-        <div className="flex flex-col gap-6 max-w-4xl">
-          {/* Card 1: Verification */}
-          {contractor.status === 'pending_verification' && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 shadow-sm">
-              <div className="flex items-start gap-4">
-                <div className="text-3xl">⚠️</div>
-                <div>
-                  <h2 className="text-lg font-bold text-yellow-900 mb-1">Verification Required</h2>
-                  <p className="text-sm text-yellow-800 mb-4">Your account is currently hidden from the public. Please upload your ID and Trade Certificate so our team can verify you.</p>
-                  <Link href="/dashboard/contractor/documents" className="bg-yellow-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-yellow-700 transition-colors text-sm inline-block">
-                    Upload Documents Now
-                  </Link>
+      {profile?.role === 'contractor' && (
+        <>
+          {!contractor ? (
+            // NEW FALLBACK FOR BRAND NEW CONTRACTORS
+            <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm text-center max-w-xl mx-auto mt-12">
+              <div className="text-4xl mb-4">🏢</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to ProFind!</h2>
+              <p className="text-gray-500 mb-6">You haven't set up your business profile yet. Let's get you visible to clients.</p>
+              <Link
+                href="/dashboard/contractor/setup"
+                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+              >
+                Complete Profile Setup
+              </Link>
+            </div>
+          ) : (
+            // EXISTING CONTRACTOR CARDS
+            <div className="flex flex-col gap-6 max-w-4xl">
+              {/* Card 1: Verification */}
+              {contractor.status === 'pending_verification' && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 shadow-sm">
+                  <div className="flex items-start gap-4">
+                    <div className="text-3xl">⚠️</div>
+                    <div>
+                      <h2 className="text-lg font-bold text-yellow-900 mb-1">Verification Required</h2>
+                      <p className="text-sm text-yellow-800 mb-4">Your account is currently hidden from the public. Please upload your ID and Trade Certificate so our team can verify you.</p>
+                      <Link href="/dashboard/contractor/documents" className="bg-yellow-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-yellow-700 transition-colors text-sm inline-block">
+                        Upload Documents Now
+                      </Link>
+                    </div>
+                  </div>
                 </div>
+              )}
+
+              {/* Card 2: Tier & Billing */}
+              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <h2 className="text-lg font-bold text-gray-800 mb-4">Subscription & Billing</h2>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                  <div>
+                    <div className="flex gap-2 mb-2">
+                      <span className={`uppercase text-xs font-extrabold px-3 py-1 rounded-md tracking-wider ${
+                        contractor.status === 'trial' ? 'bg-green-100 text-green-800' :
+                        contractor.status === 'active' ? 'bg-blue-100 text-blue-800' :
+                        contractor.status === 'expired' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {contractor.status.replace('_', ' ')}
+                      </span>
+                      {contractor.is_featured && (
+                        <span className="bg-purple-100 text-purple-800 text-xs font-extrabold px-3 py-1 rounded-md tracking-wider">
+                          ⭐ FEATURED PRO
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      {contractor.status === 'trial' && "You are currently on your 30-day free trial."}
+                      {contractor.status === 'active' && "Your R100/month standard subscription is active."}
+                      {contractor.status === 'expired' && "Your trial has expired. Subscribe to become visible again."}
+                    </p>
+                  </div>
+
+                  <div>
+                    {(contractor.status === 'trial' || contractor.status === 'expired') && (
+                      <PaystackButton email={user.email!} contractorId={contractor.id} plan="standard" />
+                    )}
+                    {contractor.status === 'active' && !contractor.is_featured && (
+                      <PaystackButton email={user.email!} contractorId={contractor.id} plan="featured" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Profile Details */}
+              <Link href="/dashboard/contractor/profile" className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-blue-300 transition-all flex justify-between items-center group">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center text-xl">🏢</div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">My Business Profile</h2>
+                    <p className="text-sm text-gray-500">Manage your bio, services, suburbs, and documents.</p>
+                  </div>
+                </div>
+                <span className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all">→</span>
+              </Link>
+
+              {/* Card 4: The Daily Grind (Leads) */}
+              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-bold text-gray-800">Your Job Leads</h2>
+                  <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">{leads.length} Total</span>
+                </div>
+                
+                {leads.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 text-sm">No leads yet. Keep your profile complete to show up in search results!</p>
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-gray-100">
+                    {leads.map((lead) => (
+                      <li key={lead.id} className="py-5">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <span className="font-bold text-gray-900 text-lg">
+                              {lead.service_requests?.categories?.name || 'Service'} in {lead.service_requests?.suburbs?.name || 'Area'}
+                            </span>
+                            <p className="text-sm text-gray-500 mt-1">From: {lead.service_requests?.guest_name || 'Client'}</p>
+                          </div>
+                          <span className={`text-xs font-bold px-3 py-1 rounded-md ${lead.status === 'new' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                            {lead.status.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-gray-700 text-sm bg-gray-50 p-4 rounded-lg border border-gray-100 italic">"{lead.service_requests?.description}"</p>
+                        <div className="mt-4 flex flex-col sm:flex-row gap-4 text-sm font-medium text-gray-700">
+                          <span className="flex items-center gap-2">📞 {lead.service_requests?.guest_phone}</span>
+                          <span className="flex items-center gap-2">✉️ {lead.service_requests?.guest_email}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
           )}
-
-          {/* Card 2: Tier & Billing */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Subscription & Billing</h2>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <div>
-                <div className="flex gap-2 mb-2">
-                  <span className={`uppercase text-xs font-extrabold px-3 py-1 rounded-md tracking-wider ${
-                    contractor.status === 'trial' ? 'bg-green-100 text-green-800' :
-                    contractor.status === 'active' ? 'bg-blue-100 text-blue-800' :
-                    contractor.status === 'expired' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {contractor.status.replace('_', ' ')}
-                  </span>
-                  {contractor.is_featured && (
-                    <span className="bg-purple-100 text-purple-800 text-xs font-extrabold px-3 py-1 rounded-md tracking-wider">
-                      ⭐ FEATURED PRO
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-600">
-                  {contractor.status === 'trial' && "You are currently on your 30-day free trial."}
-                  {contractor.status === 'active' && "Your R100/month standard subscription is active."}
-                  {contractor.status === 'expired' && "Your trial has expired. Subscribe to become visible again."}
-                </p>
-              </div>
-
-              <div>
-                {(contractor.status === 'trial' || contractor.status === 'expired') && (
-                  <PaystackButton email={user.email!} contractorId={contractor.id} plan="standard" />
-                )}
-                {contractor.status === 'active' && !contractor.is_featured && (
-                  <PaystackButton email={user.email!} contractorId={contractor.id} plan="featured" />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Profile Details */}
-          <Link href="/dashboard/contractor/profile" className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-blue-300 transition-all flex justify-between items-center group">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center text-xl">🏢</div>
-              <div>
-                <h2 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">My Business Profile</h2>
-                <p className="text-sm text-gray-500">Manage your bio, services, suburbs, and documents.</p>
-              </div>
-            </div>
-            <span className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all">→</span>
-          </Link>
-
-          {/* Card 4: The Daily Grind (Leads) */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-gray-800">Your Job Leads</h2>
-              <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">{leads.length} Total</span>
-            </div>
-            
-            {leads.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500 text-sm">No leads yet. Keep your profile complete to show up in search results!</p>
-              </div>
-            ) : (
-              <ul className="divide-y divide-gray-100">
-                {leads.map((lead) => (
-                  <li key={lead.id} className="py-5">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <span className="font-bold text-gray-900 text-lg">
-                          {lead.service_requests?.categories?.name || 'Service'} in {lead.service_requests?.suburbs?.name || 'Area'}
-                        </span>
-                        <p className="text-sm text-gray-500 mt-1">From: {lead.service_requests?.guest_name || 'Client'}</p>
-                      </div>
-                      <span className={`text-xs font-bold px-3 py-1 rounded-md ${lead.status === 'new' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
-                        {lead.status.toUpperCase()}
-                      </span>
-                    </div>
-                    <p className="text-gray-700 text-sm bg-gray-50 p-4 rounded-lg border border-gray-100 italic">"{lead.service_requests?.description}"</p>
-                    <div className="mt-4 flex flex-col sm:flex-row gap-4 text-sm font-medium text-gray-700">
-                      <span className="flex items-center gap-2">📞 {lead.service_requests?.guest_phone}</span>
-                      <span className="flex items-center gap-2">✉️ {lead.service_requests?.guest_email}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
+        </>
       )}
 
       {/* --- CLIENT VIEW --- */}
