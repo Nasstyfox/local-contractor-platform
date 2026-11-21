@@ -21,7 +21,6 @@ export default async function DashboardPage({
   let leads: any[] = []
   let clientRequests: any[] = []
   
-  // Client specific data for the embedded search
   let categories: any[] = []
   let suburbs: any[] = []
   let searchResults: any[] = []
@@ -50,28 +49,21 @@ export default async function DashboardPage({
 
   // --- CLIENT DATA ---
   if (profile?.role === 'client') {
-    // Fetch categories & suburbs for search
     const { data: cats } = await supabase.from('categories').select('*').order('name')
     const { data: subs } = await supabase.from('suburbs').select('*').order('name')
     categories = cats || []
     suburbs = subs || []
 
-    // Fetch client's recent requests (just the count for the card)
     const { data: requestsData } = await supabase
       .from('service_requests')
       .select('id')
       .eq('client_id', user.id)
     clientRequests = requestsData || []
 
-    // Build embedded search query
     let query = supabase
       .from('contractors')
       .select(`
-        id,
-        business_name,
-        bio,
-        status,
-        is_featured,
+        id, business_name, bio, status, is_featured,
         contractor_categories!inner(category_id),
         contractor_suburbs!inner(suburb_id)
       `)
@@ -79,21 +71,17 @@ export default async function DashboardPage({
       .order('is_featured', { ascending: false })
       .order('status', { ascending: true })
 
-    if (params.category) {
-      query = query.eq('contractor_categories.category_id', params.category)
-    }
-    if (params.suburb) {
-      query = query.eq('contractor_suburbs.suburb_id', params.suburb)
-    }
+    if (params.category) query = query.eq('contractor_categories.category_id', params.category)
+    if (params.suburb) query = query.eq('contractor_suburbs.suburb_id', params.suburb)
 
     const { data: results } = await query
     searchResults = results || []
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 md:p-8 min-h-screen">
+    <div className="max-w-4xl mx-auto p-6 md:p-8 min-h-screen">
       
-      {/* Consistent Header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 pb-4 border-b border-gray-200 gap-4">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
@@ -114,39 +102,53 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* --- CONTRACTOR VIEW --- */}
+      {/* --- CONTRACTOR VIEW (Vertical Cards) --- */}
       {profile?.role === 'contractor' && contractor && (
-        <div className="max-w-4xl">
-          <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-gray-800">Contractor Status</h2>
-                <p className="text-gray-600">{contractor.business_name}</p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <span className={`uppercase text-xs font-extrabold px-3 py-1 rounded-md tracking-wider ${
-                  contractor.status === 'pending_verification' ? 'bg-yellow-100 text-yellow-800' :
-                  contractor.status === 'trial' ? 'bg-green-100 text-green-800' :
-                  contractor.status === 'active' ? 'bg-blue-100 text-blue-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
-                  {contractor.status.replace('_', ' ')}
-                </span>
-                {contractor.is_featured && (
-                  <span className="bg-purple-100 text-purple-800 text-xs font-extrabold px-3 py-1 rounded-md tracking-wider">
-                    ⭐ FEATURED PRO
-                  </span>
-                )}
+        <div className="flex flex-col gap-6">
+          
+          {/* Card 1: Verification (Only shows if pending) */}
+          {contractor.status === 'pending_verification' && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="text-3xl">⚠️</div>
+                <div>
+                  <h2 className="text-lg font-bold text-yellow-900 mb-1">Verification Required</h2>
+                  <p className="text-sm text-yellow-800 mb-4">Your account is currently hidden from the public. Please upload your ID and Trade Certificate so our team can verify you.</p>
+                  <Link href="/dashboard/contractor/documents" className="bg-yellow-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-yellow-700 transition-colors text-sm inline-block">
+                    Upload Documents Now
+                  </Link>
+                </div>
               </div>
             </div>
-            
-            <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          )}
+
+          {/* Card 2: Tier & Billing */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Subscription & Billing</h2>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
               <div>
-                <Link href="/dashboard/contractor/documents" className="text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline">
-                  Manage Verification Documents
-                </Link>
+                <div className="flex gap-2 mb-2">
+                  <span className={`uppercase text-xs font-extrabold px-3 py-1 rounded-md tracking-wider ${
+                    contractor.status === 'trial' ? 'bg-green-100 text-green-800' :
+                    contractor.status === 'active' ? 'bg-blue-100 text-blue-800' :
+                    contractor.status === 'expired' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {contractor.status.replace('_', ' ')}
+                  </span>
+                  {contractor.is_featured && (
+                    <span className="bg-purple-100 text-purple-800 text-xs font-extrabold px-3 py-1 rounded-md tracking-wider">
+                      ⭐ FEATURED PRO
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600">
+                  {contractor.status === 'trial' && "You are currently on your 30-day free trial."}
+                  {contractor.status === 'active' && "Your R100/month standard subscription is active."}
+                  {contractor.status === 'expired' && "Your trial has expired. Subscribe to become visible again."}
+                </p>
               </div>
-              <div className="flex gap-3">
+
+              <div>
                 {(contractor.status === 'trial' || contractor.status === 'expired') && (
                   <PaystackButton email={user.email!} contractorId={contractor.id} plan="standard" />
                 )}
@@ -157,11 +159,29 @@ export default async function DashboardPage({
             </div>
           </div>
 
-          {/* Leads */}
+          {/* Card 3: Profile Details */}
+          <Link href="/dashboard/contractor/profile" className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-blue-300 transition-all flex justify-between items-center group">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center text-xl">🏢</div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">My Business Profile</h2>
+                <p className="text-sm text-gray-500">Manage your bio, services, suburbs, and documents.</p>
+              </div>
+            </div>
+            <span className="text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all">→</span>
+          </Link>
+
+          {/* Card 4: The Daily Grind (Leads) */}
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Your Job Leads</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-800">Your Job Leads</h2>
+              <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">{leads.length} Total</span>
+            </div>
+            
             {leads.length === 0 ? (
-              <p className="text-gray-500 text-sm py-4">No leads yet. Keep your profile complete to show up in search results!</p>
+              <div className="text-center py-8">
+                <p className="text-gray-500 text-sm">No leads yet. Keep your profile complete to show up in search results!</p>
+              </div>
             ) : (
               <ul className="divide-y divide-gray-100">
                 {leads.map((lead) => (
@@ -190,10 +210,9 @@ export default async function DashboardPage({
         </div>
       )}
 
-      {/* --- CLIENT VIEW --- */}
+      {/* --- CLIENT VIEW (Unchanged) --- */}
       {profile?.role === 'client' && (
         <>
-          {/* 3 Big Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <Link href="/dashboard/client/profile" className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm hover:shadow-md hover:border-blue-300 transition-all group flex flex-col items-center text-center">
               <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">👤</div>
@@ -219,7 +238,6 @@ export default async function DashboardPage({
             </Link>
           </div>
 
-          {/* Embedded Search */}
           <div className="mb-8">
             <h2 className="text-2xl font-extrabold text-gray-900 mb-4 tracking-tight">Find a Pro</h2>
             <form className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-6">
@@ -229,15 +247,12 @@ export default async function DashboardPage({
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
               </select>
-
               <SuburbSearch suburbs={suburbs} defaultValue={params.suburb} />
-
               <button type="submit" className="bg-blue-900 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-800 transition-colors shadow-sm">
                 Search
               </button>
             </form>
 
-            {/* Search Results */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {searchResults.length === 0 ? (
                 <div className="col-span-full text-center py-12 bg-white rounded-xl border border-gray-200">
