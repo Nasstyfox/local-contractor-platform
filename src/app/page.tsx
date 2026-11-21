@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import SuburbSearch from '@/components/SuburbSearch'
 
 export default async function HomePage({
   searchParams,
@@ -9,9 +10,11 @@ export default async function HomePage({
   const supabase = await createClient()
   const params = await searchParams
 
+  // Fetch categories and suburbs
   const { data: categories } = await supabase.from('categories').select('*').order('name')
   const { data: suburbs } = await supabase.from('suburbs').select('*').order('name')
 
+  // Build the query
   let query = supabase
     .from('contractors')
     .select(`
@@ -24,7 +27,9 @@ export default async function HomePage({
       contractor_suburbs!inner(suburb_id)
     `)
     .in('status', ['trial', 'active'])
+    // SORTING LOGIC: Featured first, then Active (paying), then Trial (free)
     .order('is_featured', { ascending: false })
+    .order('status', { ascending: true }) 
 
   if (params.category) {
     query = query.eq('contractor_categories.category_id', params.category)
@@ -42,7 +47,7 @@ export default async function HomePage({
         <h1 className="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight">Find Trusted Local Pros</h1>
         <p className="text-lg mb-10 text-blue-100">Search verified plumbers, electricians, and technicians in your area.</p>
         
-        <form className="max-w-3xl mx-auto flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl shadow-xl mb-8">
+        <form className="max-w-4xl mx-auto flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl shadow-xl mb-8">
           <select name="category" defaultValue={params.category || ''} className="flex-1 border border-gray-300 p-3 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="">All Services</option>
             {categories?.map((cat) => (
@@ -50,19 +55,14 @@ export default async function HomePage({
             ))}
           </select>
 
-          <select name="suburb" defaultValue={params.suburb || ''} className="flex-1 border border-gray-300 p-3 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">All Suburbs</option>
-            {suburbs?.map((sub) => (
-              <option key={sub.id} value={sub.id}>{sub.name} ({sub.city})</option>
-            ))}
-          </select>
+          {/* Replaced the native select with our custom Typeahead component */}
+          <SuburbSearch suburbs={suburbs || []} defaultValue={params.suburb} />
 
           <button type="submit" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm">
             Search
           </button>
         </form>
 
-        {/* Auth Buttons Moved Here */}
         <div className="flex justify-center gap-4 mt-8">
           <Link href="/login" className="bg-white/10 hover:bg-white/20 border border-white/30 text-white px-8 py-2.5 rounded-lg font-medium transition-all">
             Log In
