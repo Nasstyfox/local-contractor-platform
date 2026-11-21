@@ -74,7 +74,7 @@ export default async function AdminUserProfilePage({
   return (
     <div className="max-w-5xl mx-auto p-6 md:p-8 min-h-screen bg-gray-50">
       <div className="mb-8">
-        <Link href="/admin" className="text-blue-600 hover:underline mb-4 inline-block font-medium">
+        <Link href="/dashboard" className="text-blue-600 hover:underline mb-4 inline-block font-medium">
           ← Back to User Directory
         </Link>
         <div className="flex justify-between items-end">

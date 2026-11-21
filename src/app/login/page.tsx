@@ -29,12 +29,19 @@ export default function LoginPage() {
         />
         
         <button
-          className="bg-blue-600 text-white rounded-md px-4 py-2 text-foreground mb-2 hover:bg-blue-700"
+          className="bg-blue-600 text-white rounded-md px-4 py-2 text-foreground mb-4 hover:bg-blue-700 font-bold"
         >
           Log In
         </button>
         
-        <p className="text-center text-sm mt-4">
+        {/* Moved Forgot Password here */}
+        <div className="text-center mb-4">
+          <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+            Forgot Password?
+          </Link>
+        </div>
+        
+        <p className="text-center text-sm">
           Don't have an account? <Link href="/signup" className="text-blue-500 hover:underline">Sign up</Link>
         </p>
       </form>
