@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import PaystackButton from './contractor/billing/PaystackButton'
 import Link from 'next/link'
+import { updateClientProfile } from './actions'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -13,7 +14,9 @@ export default async function DashboardPage() {
 
   let contractor = null
   let leads: any[] = []
+  let clientRequests: any[] = []
 
+  // --- CONTRACTOR DATA ---
   if (profile?.role === 'contractor') {
     const { data } = await supabase.from('contractors').select('*').eq('id', user.id).single()
     contractor = data
@@ -33,6 +36,26 @@ export default async function DashboardPage() {
       
       if (leadsData) leads = leadsData
     }
+  }
+
+  // --- CLIENT DATA ---
+  if (profile?.role === 'client') {
+    const { data: requestsData } = await supabase
+      .from('service_requests')
+      .select(`
+        id,
+        description,
+        created_at,
+        categories (name),
+        suburbs (name),
+        leads (
+          contractors (business_name)
+        )
+      `)
+      .eq('client_id', user.id)
+      .order('created_at', { ascending: false })
+      
+    if (requestsData) clientRequests = requestsData
   }
 
   return (
@@ -56,19 +79,21 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Profile Card */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
-        <h2 className="text-lg font-bold text-gray-800 mb-4">Your Profile</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-          <div><span className="text-gray-500 block mb-1">Name</span> <span className="font-medium text-gray-900">{profile?.full_name || 'Not set'}</span></div>
-          <div><span className="text-gray-500 block mb-1">Role</span> <span className="font-medium text-gray-900 capitalize">{profile?.role}</span></div>
-          <div><span className="text-gray-500 block mb-1">Email</span> <span className="font-medium text-gray-900">{user.email}</span></div>
+      {/* --- ADMIN & CONTRACTOR PROFILE CARD --- */}
+      {profile?.role !== 'client' && (
+        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">Your Profile</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+            <div><span className="text-gray-500 block mb-1">Name</span> <span className="font-medium text-gray-900">{profile?.full_name || 'Not set'}</span></div>
+            <div><span className="text-gray-500 block mb-1">Role</span> <span className="font-medium text-gray-900 capitalize">{profile?.role}</span></div>
+            <div><span className="text-gray-500 block mb-1">Email</span> <span className="font-medium text-gray-900">{user.email}</span></div>
+          </div>
         </div>
-      </div>
+      )}
 
+      {/* --- CONTRACTOR VIEW --- */}
       {profile?.role === 'contractor' && contractor && (
         <>
-          {/* Status Card */}
           <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -116,7 +141,6 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Leads Card */}
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h2 className="text-lg font-bold text-gray-800 mb-4">Your Job Leads</h2>
             {leads.length === 0 ? (
@@ -141,6 +165,70 @@ export default async function DashboardPage() {
                       <span className="flex items-center gap-2">📞 {lead.service_requests?.guest_phone}</span>
                       <span className="flex items-center gap-2">✉️ {lead.service_requests?.guest_email}</span>
                     </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* --- CLIENT VIEW --- */}
+      {profile?.role === 'client' && (
+        <>
+          {/* Client Details Form */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-800">My Details</h2>
+              <Link href="/" className="text-sm font-bold bg-blue-50 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors">
+                + Find a New Pro
+              </Link>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">Contractors will use these details to contact you about your jobs.</p>
+            
+            <form action={updateClientProfile} className="flex flex-col sm:flex-row gap-4 items-end bg-gray-50 p-4 rounded-lg border border-gray-100">
+              <div className="flex-1 w-full">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input name="full_name" defaultValue={profile.full_name || ''} required className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              </div>
+              <div className="flex-1 w-full">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input name="phone" defaultValue={profile.phone || ''} required className="w-full border border-gray-300 p-2.5 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              </div>
+              <button type="submit" className="bg-gray-900 text-white px-6 py-2.5 rounded-md font-bold hover:bg-gray-800 transition-colors w-full sm:w-auto">
+                Save Details
+              </button>
+            </form>
+          </div>
+
+          {/* Client Job History */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-800 mb-4">My Service Requests</h2>
+            {clientRequests.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">You haven't requested any jobs yet.</p>
+                <Link href="/" className="inline-block bg-blue-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors">
+                  Browse Contractors
+                </Link>
+              </div>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {clientRequests.map((req) => (
+                  <li key={req.id} className="py-5">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <span className="font-bold text-gray-900 text-lg">
+                          {req.categories?.name || 'Service'} in {req.suburbs?.name || 'Area'}
+                        </span>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Sent to: <span className="font-medium text-gray-700">{req.leads?.[0]?.contractors?.business_name || 'Contractor'}</span>
+                        </p>
+                      </div>
+                      <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-md">
+                        {new Date(req.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    <p className="text-gray-700 text-sm bg-gray-50 p-4 rounded-lg border border-gray-100 italic mt-3">"{req.description}"</p>
                   </li>
                 ))}
               </ul>
