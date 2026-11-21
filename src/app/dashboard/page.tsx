@@ -18,21 +18,14 @@ export default async function DashboardPage() {
     const { data } = await supabase.from('contractors').select('*').eq('id', user.id).single()
     contractor = data
 
-    // Fetch leads assigned to this contractor
     if (contractor) {
       const { data: leadsData } = await supabase
         .from('leads')
         .select(`
-          id,
-          status,
-          created_at,
+          id, status, created_at,
           service_requests (
-            guest_name,
-            guest_email,
-            guest_phone,
-            description,
-            categories (name),
-            suburbs (name)
+            guest_name, guest_email, guest_phone, description,
+            categories (name), suburbs (name)
           )
         `)
         .eq('contractor_id', user.id)
@@ -43,70 +36,79 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <div className="flex items-center gap-4">
+    <div className="max-w-4xl mx-auto p-6 md:p-8 min-h-screen">
+      
+      {/* Consistent Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 pb-4 border-b border-gray-200 gap-4">
+        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard</h1>
+        
+        <div className="flex items-center gap-3">
           {profile?.role === 'admin' && (
-            <Link href="/admin" className="text-sm font-bold bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-900">
+            <Link href="/admin" className="text-sm font-bold bg-gray-900 text-white px-5 py-2.5 rounded-lg hover:bg-gray-800 transition-all shadow-sm">
               Admin Control Room
             </Link>
           )}
           <form action="/auth/signout" method="post">
-            <button className="text-sm text-red-500 hover:underline">Sign Out</button>
+            <button className="text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 px-5 py-2.5 rounded-lg transition-all">
+              Sign Out
+            </button>
           </form>
         </div>
       </div>
 
-      <div className="bg-gray-50 border rounded-lg p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-4">Your Profile</h2>
-        <p><strong>Name:</strong> {profile?.full_name || 'Not set'}</p>
-        <p><strong>Role:</strong> <span className="capitalize">{profile?.role}</span></p>
-        <p><strong>Email:</strong> {user.email}</p>
+      {/* Profile Card */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
+        <h2 className="text-lg font-bold text-gray-800 mb-4">Your Profile</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+          <div><span className="text-gray-500 block mb-1">Name</span> <span className="font-medium text-gray-900">{profile?.full_name || 'Not set'}</span></div>
+          <div><span className="text-gray-500 block mb-1">Role</span> <span className="font-medium text-gray-900 capitalize">{profile?.role}</span></div>
+          <div><span className="text-gray-500 block mb-1">Email</span> <span className="font-medium text-gray-900">{user.email}</span></div>
+        </div>
       </div>
 
       {profile?.role === 'contractor' && contractor && (
         <>
-          {/* Status Box */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-blue-900">Contractor Status</h2>
-            <p><strong>Business Name:</strong> {contractor.business_name}</p>
-            <p className="mt-2">
-              <strong>Status:</strong>{' '}
-              <span className={`uppercase text-xs font-bold px-2 py-1 rounded ${
-                contractor.status === 'pending_verification' ? 'bg-yellow-200 text-yellow-800' :
-                contractor.status === 'trial' ? 'bg-green-200 text-green-800' :
-                contractor.status === 'active' ? 'bg-blue-200 text-blue-800' :
-                'bg-red-200 text-red-800'
-              }`}>
-                {contractor.status.replace('_', ' ')}
-              </span>
-              {contractor.is_featured && (
-                <span className="ml-2 bg-purple-200 text-purple-800 text-xs font-bold px-2 py-1 rounded uppercase">
-                  ⭐ Featured Pro
-                </span>
-              )}
-            </p>
-            
-            <div className="mt-6 pt-6 border-t border-blue-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          {/* Status Card */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
+            <div className="flex justify-between items-start mb-4">
               <div>
-                <p className="text-sm text-blue-800 font-medium mb-2">
+                <h2 className="text-lg font-bold text-gray-800">Contractor Status</h2>
+                <p className="text-gray-600">{contractor.business_name}</p>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <span className={`uppercase text-xs font-extrabold px-3 py-1 rounded-md tracking-wider ${
+                  contractor.status === 'pending_verification' ? 'bg-yellow-100 text-yellow-800' :
+                  contractor.status === 'trial' ? 'bg-green-100 text-green-800' :
+                  contractor.status === 'active' ? 'bg-blue-100 text-blue-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {contractor.status.replace('_', ' ')}
+                </span>
+                {contractor.is_featured && (
+                  <span className="bg-purple-100 text-purple-800 text-xs font-extrabold px-3 py-1 rounded-md tracking-wider">
+                    ⭐ FEATURED PRO
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <p className="text-sm text-gray-600 font-medium mb-2">
                   {contractor.status === 'trial' && "You are on a 30-day free trial."}
                   {contractor.status === 'expired' && "Your trial has expired. Please subscribe to stay visible."}
                   {contractor.status === 'active' && "Your subscription is active. Thank you!"}
                   {contractor.status === 'pending_verification' && "Upload documents to get verified."}
                 </p>
-                <Link href="/dashboard/contractor/documents" className="text-sm font-medium text-blue-700 hover:underline">
+                <Link href="/dashboard/contractor/documents" className="text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline">
                   Manage Verification Documents
                 </Link>
               </div>
 
-              {/* Billing Buttons */}
               <div className="flex gap-3">
                 {(contractor.status === 'trial' || contractor.status === 'expired') && (
                   <PaystackButton email={user.email!} contractorId={contractor.id} plan="standard" />
                 )}
-
                 {contractor.status === 'active' && !contractor.is_featured && (
                   <PaystackButton email={user.email!} contractorId={contractor.id} plan="featured" />
                 )}
@@ -114,30 +116,30 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Inbox / Leads Box */}
-          <div className="bg-white border rounded-lg p-6 shadow-sm">
-            <h2 className="text-xl font-bold mb-4">Your Job Leads</h2>
+          {/* Leads Card */}
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Your Job Leads</h2>
             {leads.length === 0 ? (
-              <p className="text-gray-500 text-sm">No leads yet. Keep your profile complete to show up in search results!</p>
+              <p className="text-gray-500 text-sm py-4">No leads yet. Keep your profile complete to show up in search results!</p>
             ) : (
-              <ul className="divide-y">
+              <ul className="divide-y divide-gray-100">
                 {leads.map((lead) => (
-                  <li key={lead.id} className="py-4">
-                    <div className="flex justify-between items-start mb-2">
+                  <li key={lead.id} className="py-5">
+                    <div className="flex justify-between items-start mb-3">
                       <div>
-                        <span className="font-bold text-gray-800">
+                        <span className="font-bold text-gray-900 text-lg">
                           {lead.service_requests?.categories?.name || 'Service'} in {lead.service_requests?.suburbs?.name || 'Area'}
                         </span>
-                        <p className="text-sm text-gray-500">From: {lead.service_requests?.guest_name || 'Client'}</p>
+                        <p className="text-sm text-gray-500 mt-1">From: {lead.service_requests?.guest_name || 'Client'}</p>
                       </div>
-                      <span className={`text-xs font-bold px-2 py-1 rounded ${lead.status === 'new' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+                      <span className={`text-xs font-bold px-3 py-1 rounded-md ${lead.status === 'new' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
                         {lead.status.toUpperCase()}
                       </span>
                     </div>
-                    <p className="text-gray-700 text-sm bg-gray-50 p-3 rounded mt-2 italic">"{lead.service_requests?.description}"</p>
-                    <div className="mt-3 text-sm font-medium text-blue-600">
-                      <p>📞 {lead.service_requests?.guest_phone}</p>
-                      <p>✉️ {lead.service_requests?.guest_email}</p>
+                    <p className="text-gray-700 text-sm bg-gray-50 p-4 rounded-lg border border-gray-100 italic">"{lead.service_requests?.description}"</p>
+                    <div className="mt-4 flex flex-col sm:flex-row gap-4 text-sm font-medium text-gray-700">
+                      <span className="flex items-center gap-2">📞 {lead.service_requests?.guest_phone}</span>
+                      <span className="flex items-center gap-2">✉️ {lead.service_requests?.guest_email}</span>
                     </div>
                   </li>
                 ))}
