@@ -3,26 +3,19 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export async function updateClientProfile(formData: FormData) {
+export async function closeLead(leadId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) return
 
-  const full_name = formData.get('full_name') as string
-  const phone = formData.get('phone') as string
+  // Update the lead status to 'closed' (only if it belongs to this contractor)
+  await supabase
+    .from('leads')
+    .update({ status: 'closed' })
+    .eq('id', leadId)
+    .eq('contractor_id', user.id)
 
-  const { error } = await supabase
-    .from('profiles')
-    .update({ full_name, phone })
-    .eq('id', user.id)
-
-  if (error) {
-    console.error("Failed to update profile:", error)
-    // We don't return anything, we just stop execution
-    return
-  }
-
+  // Refresh the dashboard to make the lead disappear
   revalidatePath('/dashboard')
-  // We don't return anything here either
 }

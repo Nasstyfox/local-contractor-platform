@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { closeLead } from './actions'
 import PaystackButton from './contractor/billing/PaystackButton'
 import Link from 'next/link'
 import SuburbSearch from '@/components/SuburbSearch'
@@ -42,6 +43,7 @@ export default async function DashboardPage({
           )
         `)
         .eq('contractor_id', user.id)
+        .neq('status', 'closed') // <--- Hides completed leads
         .order('created_at', { ascending: false })
       
       if (leadsData) leads = leadsData
@@ -198,7 +200,7 @@ export default async function DashboardPage({
       {profile?.role === 'contractor' && (
         <>
           {!contractor ? (
-            // NEW FALLBACK FOR BRAND NEW CONTRACTORS
+            // FALLBACK FOR BRAND NEW CONTRACTORS
             <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm text-center max-w-xl mx-auto mt-12">
               <div className="text-4xl mb-4">🏢</div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to ProFind!</h2>
@@ -305,9 +307,22 @@ export default async function DashboardPage({
                           </span>
                         </div>
                         <p className="text-gray-700 text-sm bg-gray-50 p-4 rounded-lg border border-gray-100 italic">"{lead.service_requests?.description}"</p>
-                        <div className="mt-4 flex flex-col sm:flex-row gap-4 text-sm font-medium text-gray-700">
-                          <span className="flex items-center gap-2">📞 {lead.service_requests?.guest_phone}</span>
-                          <span className="flex items-center gap-2">✉️ {lead.service_requests?.guest_email}</span>
+                        
+                        {/* UPDATED CONTACT & BUTTON SECTION */}
+                        <div className="mt-4 flex flex-col sm:flex-row gap-4 text-sm font-medium text-gray-700 items-start sm:items-center justify-between">
+                          <div className="flex flex-col sm:flex-row gap-4">
+                            <span className="flex items-center gap-2">📞 {lead.service_requests?.guest_phone}</span>
+                            <span className="flex items-center gap-2">✉️ {lead.service_requests?.guest_email}</span>
+                          </div>
+
+                          <form action={async () => {
+                            'use server'
+                            await closeLead(lead.id)
+                          }}>
+                            <button className="text-xs font-bold bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors">
+                              Mark as Done ✓
+                            </button>
+                          </form>
                         </div>
                       </li>
                     ))}

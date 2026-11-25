@@ -99,9 +99,16 @@ export default async function ClientHistoryPage() {
                           <span className="font-medium text-gray-800 text-sm">
                             {lead.contractors?.business_name || 'Unknown Contractor'}
                           </span>
-                          <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                            Notified
+                          
+                          {/* Dynamic Badge based on status */}
+                          <span className={`text-xs font-bold px-2 py-1 rounded ${
+                            lead.status === 'closed' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-blue-50 text-blue-600'
+                          }`}>
+                            {lead.status === 'closed' ? 'Completed' : 'Notified'}
                           </span>
+                          
                         </li>
                       ))}
                     </ul>
